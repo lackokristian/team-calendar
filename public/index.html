@@ -376,9 +376,16 @@
             dayDate.setHours(0,0,0,0);
 
             /* find entries for this day */
+            // Skip weekends
+            const weekday = dayDate.getDay();
+            if (weekday === 0 || weekday === 6) {
+                calendar.appendChild(dayCell); // still show the cell
+                continue; // skip dot rendering
+            }
+
             const todaysEntries = timeOffEntries.filter(e => {
-                const s = new Date(e.startDate); s.setHours(0,0,0,0);
-                const eDate = new Date(e.endDate); eDate.setHours(0,0,0,0);
+                const s = new Date(e.startDate); s.setHours(0, 0, 0, 0);
+                const eDate = new Date(e.endDate); eDate.setHours(0, 0, 0, 0);
                 return dayDate >= s && dayDate <= eDate;
             });
 
