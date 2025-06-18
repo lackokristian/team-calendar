@@ -381,7 +381,8 @@
                 return dayDate >= s && dayDate <= eDate;
             });
 
-            if (todaysEntries.length) {
+            // Only show dots if it's a weekday AND there are entries
+            if ((weekday !== 0 && weekday !== 6) && todaysEntries.length) { // <-- Added condition here
                 const dotsContainer = document.createElement('div');
                 dotsContainer.className = 'mt-1 flex flex-wrap gap-1';
 
