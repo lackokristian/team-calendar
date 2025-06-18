@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Time‑Off Calendar</title>
 
-    <!-- Tailwind & Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Tailwind custom palette -->
     <script>
         tailwind.config = {
             theme: {
@@ -28,8 +26,8 @@
         /* ─────────────────────────  CALENDAR CELLS  ───────────────────────── */
         .calendar-day {
             height: 100px;
-            overflow: visible;          /* allow tooltips to overflow */
-            position: relative;         /* context for absolutely‑positioned kids (if ever needed) */
+            overflow: visible;           /* allow tooltips to overflow */
+            position: relative;          /* context for absolutely‑positioned kids (if ever needed) */
         }
         .calendar-day:hover {
             background-color: #f3f4f6;
@@ -45,7 +43,7 @@
         }
 
         .tooltip {
-            position: relative;   /* tooltiptext is absolute to this wrapper */
+            position: relative;  /* tooltiptext is absolute to this wrapper */
             display: inline-block;
         }
 
@@ -81,7 +79,7 @@
         .tooltip .tooltiptext::after {
             content: "";
             position: absolute;
-            top: 100%;             /* at bottom edge of tooltip */
+            top: 100%;           /* at bottom edge of tooltip */
             left: 50%;
             transform: translateX(-50%);
             border-width: 5px;
@@ -100,14 +98,12 @@
 
 <body class="bg-gray-50">
     <div class="container mx-auto px-4 py-8">
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800">Team Time‑Off Calendar</h1>
             <p class="text-gray-600">Track and manage your team's time off in one place</p>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- ───────────────────────── Team members panel ───────────────────────── -->
             <div class="bg-white rounded-lg shadow p-6 lg:col-span-1">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-gray-800">Team Members</h2>
@@ -117,7 +113,6 @@
                 </div>
                 <div id="memberList" class="space-y-2"></div>
 
-                <!-- add‑member modal -->
                 <div id="addMemberModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
                     <div class="bg-white rounded-lg p-6 w-full max-w-md">
                         <div class="flex justify-between items-center mb-4">
@@ -138,7 +133,6 @@
                 </div>
             </div>
 
-            <!-- ───────────────────────── Calendar panel ───────────────────────── -->
             <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-gray-800">Time‑Off Calendar</h2>
@@ -152,14 +146,12 @@
 
                 <div class="text-center mb-4"><h3 id="currentMonthYear" class="text-xl font-semibold text-gray-800"></h3></div>
 
-                <!-- legend -->
                 <div class="flex flex-wrap gap-3 mb-4">
                     <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-vacation mr-1"></div><span class="text-xs">Vacation</span></div>
                     <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-sick mr-1"></div><span class="text-xs">Sick Leave</span></div>
                     <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-other mr-1"></div><span class="text-xs">Other</span></div>
                 </div>
 
-                <!-- calendar grid -->
                 <div id="calendar" class="grid grid-cols-7 gap-1">
                     <div class="text-center font-medium text-gray-500 py-2">Sun</div>
                     <div class="text-center font-medium text-gray-500 py-2">Mon</div>
@@ -170,7 +162,6 @@
                     <div class="text-center font-medium text-gray-500 py-2">Sat</div>
                 </div>
 
-                <!-- add‑time‑off modal -->
                 <div id="timeOffModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
                     <div class="bg-white rounded-lg p-6 w-full max-w-md">
                         <div class="flex justify-between items-center mb-4">
@@ -211,11 +202,7 @@
                         </div>
                     </div>
                 </div>
-            </div> <!-- /calendar panel -->
-        </div> <!-- /grid -->
-
-        <!-- ───────────────────────── Annual summary ───────────────────────── -->
-        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            </div> </div> <div class="bg-white rounded-lg shadow p-6 mt-6">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Annual Time‑Off Summary</h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -233,13 +220,17 @@
             </div>
         </div>
 
-        <!-- ───────────────────────── All entries w/ month filter ───────────────────────── -->
         <div class="bg-white rounded-lg shadow p-6 mt-6">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-gray-800">All Time‑Off Entries</h2>
-                <select id="monthFilter" class="border border-gray-300 rounded px-2 py-1 text-sm">
-                    <option value="all">All Months</option>
-                </select>
+                <div class="flex space-x-2">
+                    <select id="memberFilter" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                        <option value="all">All Members</option>
+                    </select>
+                    <select id="monthFilter" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                        <option value="all">All Months</option>
+                    </select>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -257,19 +248,16 @@
                 </table>
             </div>
         </div>
-    </div> <!-- /container -->
-
-    <!-- ───────────────────────── JavaScript ───────────────────────── -->
-    <script>
+    </div> <script>
     /* ------------------------------------------------------------------
-       Global state
+        Global state
     ------------------------------------------------------------------ */
     let teamMembers = [];
     let timeOffEntries = [];
     let currentDate    = new Date();
 
     /* ------------------------------------------------------------------
-       DOM handles
+        DOM handles
     ------------------------------------------------------------------ */
     const memberList            = document.getElementById('memberList');
     const addMemberBtn          = document.getElementById('addMemberBtn');
@@ -299,9 +287,10 @@
     const timeOffTableBody      = document.getElementById('timeOffTableBody');
     const timeOffSummaryBody    = document.getElementById('timeOffSummaryBody');
     const monthFilterSelect     = document.getElementById('monthFilter');
+    const memberFilterSelect    = document.getElementById('memberFilter'); // New DOM handle
 
     /* ------------------------------------------------------------------
-       Fetch helpers
+        Fetch helpers
     ------------------------------------------------------------------ */
     async function fetchData() {
         try {
@@ -318,7 +307,7 @@
     }
 
     /* ------------------------------------------------------------------
-       Rendering helpers
+        Rendering helpers
     ------------------------------------------------------------------ */
     function calculateWeekdaysOnly(start, end) {
         let count = 0;
@@ -464,15 +453,43 @@
         if ([...monthFilterSelect.options].some(o=>o.value===currentValue)) monthFilterSelect.value=currentValue;
     }
 
+    /* New: Populate member filter dropdown */
+    function populateMemberFilter() {
+        if (!memberFilterSelect) return;
+        const currentValue = memberFilterSelect.value;
+        memberFilterSelect.innerHTML = '<option value="all">All Members</option>';
+        teamMembers.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            memberFilterSelect.appendChild(opt);
+        });
+        if ([...memberFilterSelect.options].some(o => o.value === currentValue)) {
+            memberFilterSelect.value = currentValue;
+        } else {
+            memberFilterSelect.value = 'all'; // Reset if selected member is no longer available
+        }
+    }
+
     function renderTimeOffOverview() {
         timeOffTableBody.innerHTML='';
-        const selected = monthFilterSelect?.value || 'all';
-        const list = selected==='all' ? timeOffEntries : timeOffEntries.filter(e => {
-            const d = new Date(e.startDate);
-            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === selected;
-        });
+        const selectedMonth = monthFilterSelect?.value || 'all';
+        const selectedMember = memberFilterSelect?.value || 'all'; // Get selected member
 
-        list.forEach(entry => {
+        let filteredList = timeOffEntries;
+
+        if (selectedMonth !== 'all') {
+            filteredList = filteredList.filter(e => {
+                const d = new Date(e.startDate);
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === selectedMonth;
+            });
+        }
+
+        if (selectedMember !== 'all') {
+            filteredList = filteredList.filter(e => e.memberId === parseInt(selectedMember));
+        }
+
+        filteredList.forEach(entry => {
             const member = teamMembers.find(m=>m.id===entry.memberId);
             if (!member) return;
             const s = new Date(entry.startDate);
@@ -502,7 +519,7 @@
     }
 
     /* ------------------------------------------------------------------
-       API calls (create/delete)
+        API calls (create/delete)
     ------------------------------------------------------------------ */
     async function saveNewMember() {
         const name = memberNameInput.value.trim();
@@ -547,7 +564,7 @@
     }
 
     /* ------------------------------------------------------------------
-       Init + listeners
+        Init + listeners
     ------------------------------------------------------------------ */
     function setupEventListeners() {
         addMemberBtn.addEventListener('click', () => addMemberModal.classList.remove('hidden'));
@@ -565,6 +582,7 @@
         saveTimeOffBtn.addEventListener('click', saveTimeOff);
 
         monthFilterSelect.addEventListener('change', renderTimeOffOverview);
+        memberFilterSelect.addEventListener('change', renderTimeOffOverview); // New event listener for member filter
     }
 
     async function init() {
@@ -579,6 +597,7 @@
         renderTeamMembers();
         renderCalendar();
         populateMonthFilter();
+        populateMemberFilter(); // Call new populate function
         renderTimeOffOverview();
         renderTimeOffSummary();
         populateMemberDropdown();
