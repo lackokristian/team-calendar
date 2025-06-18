@@ -320,6 +320,18 @@
     /* ------------------------------------------------------------------
        Rendering helpers
     ------------------------------------------------------------------ */
+    function calculateWeekdaysOnly(start, end) {
+        let count = 0;
+        let current = new Date(start);
+        current.setHours(0, 0, 0, 0);
+        while (current <= end) {
+            const day = current.getDay();
+            if (day !== 0 && day !== 6) count++; // skip Sundays and Saturdays
+            current.setDate(current.getDate() + 1);
+        }
+        return count;
+    }
+
     function renderTeamMembers() {
         memberList.innerHTML = '';
         teamMembers.forEach(m => {
@@ -410,7 +422,7 @@
             let vac=0, sick=0, other=0;
             timeOffEntries.filter(e => e.memberId===member.id && new Date(e.startDate).getFullYear()===thisYear)
                            .forEach(e => {
-                               const days = (new Date(e.endDate)-new Date(e.startDate))/(1000*3600*24)+1;
+                               const days = calculateWeekdaysOnly(new Date(e.startDate), new Date(e.endDate));
                                if (e.type==='vacation') vac += days;
                                else if (e.type==='sick') sick += days;
                                else other += days;
@@ -458,7 +470,7 @@
             if (!member) return;
             const s = new Date(entry.startDate);
             const e = new Date(entry.endDate);
-            const days = (e - s)/(1000*3600*24)+1;
+            const days = calculateWeekdaysOnly(s, e);
             const row = timeOffTableBody.insertRow();
             row.innerHTML = `
                 <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
