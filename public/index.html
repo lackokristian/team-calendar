@@ -153,13 +153,13 @@
                 </div>
 
                 <div id="calendar" class="grid grid-cols-7 gap-1">
-                    <div class="text-center font-medium text-gray-500 py-2">Sun</div>
                     <div class="text-center font-medium text-gray-500 py-2">Mon</div>
                     <div class="text-center font-medium text-gray-500 py-2">Tue</div>
                     <div class="text-center font-medium text-gray-500 py-2">Wed</div>
                     <div class="text-center font-medium text-gray-500 py-2">Thu</div>
                     <div class="text-center font-medium text-gray-500 py-2">Fri</div>
                     <div class="text-center font-medium text-gray-500 py-2">Sat</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Sun</div>
                 </div>
 
                 <div id="timeOffModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
@@ -287,7 +287,7 @@
     const timeOffTableBody      = document.getElementById('timeOffTableBody');
     const timeOffSummaryBody    = document.getElementById('timeOffSummaryBody');
     const monthFilterSelect     = document.getElementById('monthFilter');
-    const memberFilterSelect    = document.getElementById('memberFilter'); // New DOM handle
+    const memberFilterSelect    = document.getElementById('memberFilter');
 
     /* ------------------------------------------------------------------
         Fetch helpers
@@ -346,7 +346,10 @@
         const firstDay   = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const lastDay    = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0);
         const daysInMonth= lastDay.getDate();
-        const startWeekday = firstDay.getDay();
+        
+        // Adjust startWeekday: 0 for Monday, 1 for Tuesday, ..., 6 for Sunday
+        let startWeekday = firstDay.getDay();
+        startWeekday = (startWeekday === 0) ? 6 : startWeekday - 1; // Convert Sunday (0) to 6, and shift others by -1
 
         /* leading blanks */
         for (let i=0;i<startWeekday;i++) calendar.appendChild(document.createElement('div')).className='calendar-day bg-gray-100';
@@ -474,7 +477,7 @@
     function renderTimeOffOverview() {
         timeOffTableBody.innerHTML='';
         const selectedMonth = monthFilterSelect?.value || 'all';
-        const selectedMember = memberFilterSelect?.value || 'all'; // Get selected member
+        const selectedMember = memberFilterSelect?.value || 'all';
 
         let filteredList = timeOffEntries;
 
@@ -582,7 +585,7 @@
         saveTimeOffBtn.addEventListener('click', saveTimeOff);
 
         monthFilterSelect.addEventListener('change', renderTimeOffOverview);
-        memberFilterSelect.addEventListener('change', renderTimeOffOverview); // New event listener for member filter
+        memberFilterSelect.addEventListener('change', renderTimeOffOverview);
     }
 
     async function init() {
@@ -597,7 +600,7 @@
         renderTeamMembers();
         renderCalendar();
         populateMonthFilter();
-        populateMemberFilter(); // Call new populate function
+        populateMemberFilter();
         renderTimeOffOverview();
         renderTimeOffSummary();
         populateMemberDropdown();
