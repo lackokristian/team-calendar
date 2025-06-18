@@ -352,7 +352,7 @@
         startWeekday = (startWeekday === 0) ? 6 : startWeekday - 1; // Convert Sunday (0) to 6, and shift others by -1
 
         /* leading blanks */
-        for (let i=0;i<startWeekday;i++) calendar.appendChild(document.createElement('div')).className='calendar-day bg-gray-100';
+        for (let i=0;i<startWeekday;i++) calendar.appendChild(document.createElement('div')).className='calendar-day'; // Removed bg-gray-100 here
 
         /* one cell per day */
         for (let d=1; d<=daysInMonth; d++) {
@@ -367,14 +367,14 @@
             const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), d);
             dayDate.setHours(0,0,0,0);
 
-            /* find entries for this day */
-            // Skip weekends
-            const weekday = dayDate.getDay();
+            /* Highlight weekends */
+            const weekday = dayDate.getDay(); // 0 for Sunday, 6 for Saturday
             if (weekday === 0 || weekday === 6) {
-                calendar.appendChild(dayCell); // still show the cell
-                continue; // skip dot rendering
+                dayCell.classList.add('bg-gray-100');
             }
 
+
+            /* find entries for this day */
             const todaysEntries = timeOffEntries.filter(e => {
                 const s = new Date(e.startDate); s.setHours(0, 0, 0, 0);
                 const eDate = new Date(e.endDate); eDate.setHours(0, 0, 0, 0);
