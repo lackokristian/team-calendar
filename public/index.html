@@ -16,6 +16,8 @@
                         vacation: '#4ade80',
                         sick:     '#f87171',
                         other:    '#60a5fa',
+                        oncall:   '#facc15',
+                        backup:   '#94a3b8',
                     }
                 }
             }
@@ -23,75 +25,26 @@
     </script>
 
     <style>
-        /* ─────────────────────────  CALENDAR CELLS  ───────────────────────── */
-        .calendar-day {
-            height: 100px;
-            overflow: visible;           /* allow tooltips to overflow */
-            position: relative;          /* context for absolutely‑positioned kids (if ever needed) */
-        }
-        .calendar-day:hover {
-            background-color: #f3f4f6;
-        }
+        /* --- Existing styles --- */
+        .calendar-day { height: 100px; overflow: visible; position: relative; }
+        .calendar-day:hover { background-color: #f3f4f6; }
+        .event-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 2px; }
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; opacity: 0; transition: opacity 0.3s; background-color: #ffffff; color: #333333; border: 1px solid #ccc; border-radius: 6px; padding: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; min-width: 120px; position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); z-index: 1000; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 5px; border-style: solid; border-color: #ffffff transparent transparent transparent; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1)); }
+        .on-call-initials, .backup-on-call-initials { display: inline-block; color: white; font-size: 0.6rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; line-height: 16px; text-align: center; margin-left: 2px; vertical-align: middle; }
+        .on-call-initials { background-color: #facc15; }
+        .backup-on-call-initials { background-color: #94a3b8; }
+        .bulk-member-badge { cursor: pointer; transition: background-color 0.2s; }
+        .bulk-order-item { display: flex; align-items: center; background-color: #e5e7eb; padding: 4px 8px; border-radius: 9999px; font-size: 0.875rem; }
+        .bulk-order-item .remove-icon { margin-left: 8px; cursor: pointer; color: #9ca3af; }
+        .bulk-order-item .remove-icon:hover { color: #ef4444; }
 
-        /* ─────────────────────────  DOT + TOOLTIP  ───────────────────────── */
-        .event-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 2px;
-        }
-
-        .tooltip {
-            position: relative;  /* tooltiptext is absolute to this wrapper */
-            display: inline-block;
-        }
-
-        .tooltip .tooltiptext {
-            /* hidden by default */
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s;
-
-            /* aesthetic */
-            background-color: #ffffff; /* solid white */
-            color: #333333;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 5px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            white-space: nowrap;
-            min-width: 120px;
-
-            /* positioning */
-            position: absolute;
-            bottom: 125%;          /* show above dot */
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-        }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        /* optional little arrow */
-        .tooltip .tooltiptext::after {
-            content: "";
-            position: absolute;
-            top: 100%;           /* at bottom edge of tooltip */
-            left: 50%;
-            transform: translateX(-50%);
-            border-width: 5px;
-            border-style: solid;
-            border-color: #ffffff transparent transparent transparent; /* white arrow */
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
-        }
-
-        /* ─────────────────────────  RESPONSIVE  ───────────────────────── */
         @media (max-width: 768px) {
             .calendar-day { height: 60px; font-size: 0.8rem; }
             .event-dot    { width: 6px;  height: 6px;  }
+            .on-call-initials, .backup-on-call-initials { width: 14px; height: 14px; line-height: 14px; font-size: 0.5rem; }
         }
     </style>
 </head>
@@ -107,40 +60,21 @@
             <div class="bg-white rounded-lg shadow p-6 lg:col-span-1">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-gray-800">Team Members</h2>
-                    <button id="addMemberBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                        <i class="fas fa-plus mr-1"></i> Add
-                    </button>
+                    <button id="addMemberBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"><i class="fas fa-plus mr-1"></i> Add</button>
                 </div>
                 <div id="memberList" class="space-y-2"></div>
-
-                <div id="addMemberModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-                    <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold">Add New Team Member</h3>
-                            <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="memberName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input type="text" id="memberName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div class="flex justify-end space-x-3">
-                                <button id="cancelAddMemberBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
-                                <button id="saveMemberBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <h2 class="text-xl font-semibold text-gray-800">Time‑Off Calendar</h2>
-                    <div class="flex space-x-2">
+                    <div class="flex space-x-2 flex-wrap gap-2">
                         <button id="prevMonthBtn" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-left"></i></button>
                         <button id="nextMonthBtn" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-right"></i></button>
                         <button id="todayBtn" class="px-3 py-1 bg-gray-200 rounded-md text-sm hover:bg-gray-300">Today</button>
                         <button id="addTimeOffBtn" class="px-3 py-1 bg-green-500 text-white rounded-md text-sm hover:bg-green-600"><i class="fas fa-plus mr-1"></i> Add Time Off</button>
+						<button id="editOnCallBtn" class="px-3 py-1 bg-yellow-400 text-white rounded-md text-sm hover:bg-yellow-500"><i class="fas fa-user-cog mr-1"></i> Edit On Call</button>
+                        <button id="bulkEditBtn" class="px-3 py-1 bg-teal-500 text-white rounded-md text-sm hover:bg-teal-600"><i class="fas fa-layer-group mr-1"></i> Bulk Edit</button>
                     </div>
                 </div>
 
@@ -150,9 +84,11 @@
                     <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-vacation mr-1"></div><span class="text-xs">Vacation</span></div>
                     <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-sick mr-1"></div><span class="text-xs">Sick Leave</span></div>
                     <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-other mr-1"></div><span class="text-xs">Other</span></div>
+                    <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-oncall mr-1"></div><span class="text-xs">On Call (Primary)</span></div>
+                    <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-backup mr-1"></div><span class="text-xs">On Call (Backup)</span></div>
                 </div>
-
-                <div id="calendar" class="grid grid-cols-7 gap-1">
+                <div id="calendar" class="grid grid-cols-8 gap-1">
+                    <div class="text-center font-medium text-gray-500 py-2">Wk</div>
                     <div class="text-center font-medium text-gray-500 py-2">Mon</div>
                     <div class="text-center font-medium text-gray-500 py-2">Tue</div>
                     <div class="text-center font-medium text-gray-500 py-2">Wed</div>
@@ -161,450 +97,414 @@
                     <div class="text-center font-medium text-gray-500 py-2">Sat</div>
                     <div class="text-center font-medium text-gray-500 py-2">Sun</div>
                 </div>
-
-                <div id="timeOffModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-                    <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold">Add Time Off</h3>
-                            <button id="closeTimeOffModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="timeOffMember" class="block text-sm font-medium text-gray-700 mb-1">Team Member</label>
-                                <select id="timeOffMember" class="w-full px-3 py-2 border border-gray-300 rounded-md"></select>
-                            </div>
-                            <div>
-                                <label for="timeOffType" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                <select id="timeOffType" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                    <option value="vacation">Vacation</option>
-                                    <option value="sick">Sick Leave</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="timeOffStart" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                                    <input type="date" id="timeOffStart" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                </div>
-                                <div>
-                                    <label for="timeOffEnd" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                                    <input type="date" id="timeOffEnd" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                                </div>
-                            </div>
-                            <div>
-                                <label for="timeOffNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-                                <textarea id="timeOffNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                            </div>
-                            <div class="flex justify-end space-x-3">
-                                <button id="cancelTimeOffBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
-                                <button id="saveTimeOffBtn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Save</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> </div> <div class="bg-white rounded-lg shadow p-6 mt-6">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Annual Time‑Off Summary</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Member</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Vacation</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Sick</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Other</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="timeOffSummaryBody" class="divide-y divide-gray-200"></tbody>
-                </table>
             </div>
         </div>
 
         <div class="bg-white rounded-lg shadow p-6 mt-6">
-            <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Annual Time‑Off Summary</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Member</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Vacation</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Sick</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Other</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Total</th></tr></thead>
+                    <tbody id="timeOffSummaryBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-gray-800">All Time‑Off Entries</h2>
                 <div class="flex space-x-2">
-                    <select id="memberFilter" class="border border-gray-300 rounded px-2 py-1 text-sm">
-                        <option value="all">All Members</option>
-                    </select>
-                    <select id="monthFilter" class="border border-gray-300 rounded px-2 py-1 text-sm">
-                        <option value="all">All Months</option>
-                    </select>
+                    <select id="memberFilter" class="border border-gray-300 rounded px-2 py-1 text-sm"><option value="all">All Members</option></select>
+                    <select id="monthFilter" class="border border-gray-300 rounded px-2 py-1 text-sm"><option value="all">All Months</option></select>
                 </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Member</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Type</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Dates</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Duration</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Notes</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                    </thead>
+                    <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Member</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Type</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Dates</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Duration</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Notes</th><th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Actions</th></tr></thead>
                     <tbody id="timeOffTableBody" class="divide-y divide-gray-200"></tbody>
                 </table>
             </div>
         </div>
-    </div> <script>
+    </div>
+
+    <div id="addMemberModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Add New Team Member</h3><button id="closeModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button></div><div class="space-y-4"><div><label for="memberName" class="block text-sm font-medium text-gray-700 mb-1">Name</label><input type="text" id="memberName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></div><div class="flex justify-end space-x-3"><button id="cancelAddMemberBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button><button id="saveMemberBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save</button></div></div></div>
+    </div>
+    <div id="timeOffModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Add Time Off</h3><button id="closeTimeOffModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button></div><div class="space-y-4"><div><label for="timeOffMember" class="block text-sm font-medium text-gray-700 mb-1">Team Member</label><select id="timeOffMember" class="w-full px-3 py-2 border border-gray-300 rounded-md"></select></div><div><label for="timeOffType" class="block text-sm font-medium text-gray-700 mb-1">Type</label><select id="timeOffType" class="w-full px-3 py-2 border border-gray-300 rounded-md"><option value="vacation">Vacation</option><option value="sick">Sick Leave</option><option value="other">Other</option></select></div><div class="grid grid-cols-2 gap-4"><div><label for="timeOffStart" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label><input type="date" id="timeOffStart" class="w-full px-3 py-2 border border-gray-300 rounded-md"></div><div><label for="timeOffEnd" class="block text-sm font-medium text-gray-700 mb-1">End Date</label><input type="date" id="timeOffEnd" class="w-full px-3 py-2 border border-gray-300 rounded-md"></div></div><div><label for="timeOffNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label><textarea id="timeOffNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea></div><div class="flex justify-end space-x-3"><button id="cancelTimeOffBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button><button id="saveTimeOffBtn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Save</button></div></div></div>
+    </div>
+    <div id="editOnCallModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Edit On-Call Rotation</h3><button id="closeEditOnCallModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button></div><div class="space-y-4"><div class="flex items-center justify-between"><button id="prevOnCallWeekBtn" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-left"></i></button><h4 id="currentOnCallWeekDisplay" class="font-medium text-gray-800"></h4><button id="nextOnCallWeekBtn" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-right"></i></button></div><div><label for="onCallMemberSelect" class="block text-sm font-medium text-gray-700 mb-1">Add Primary On-Call:</label><div class="flex space-x-2"><select id="onCallMemberSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md"></select><button id="addOnCallMemberBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Add</button></div></div><div><label for="backupOnCallMemberSelect" class="block text-sm font-medium text-gray-700 mb-1">Add Backup On-Call:</label><div class="flex space-x-2"><select id="backupOnCallMemberSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md"></select><button id="addBackupOnCallMemberBtn" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">Add</button></div></div><div><p class="block text-sm font-medium text-gray-700 mb-2">On Call for this week:</p><div id="onCallMembersList" class="space-y-2 border border-gray-200 rounded-md p-3 min-h-[60px]"><p class="text-gray-500 text-sm">No one assigned yet.</p></div></div><div class="flex justify-end space-x-3"><button id="cancelEditOnCallBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Close</button></div></div></div>
+    </div>
+
+    <div id="bulkEditModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Bulk Edit On-Call Schedule</h3>
+                <button id="closeBulkEditModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="mb-4 border-b pb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mode</label>
+                <div class="flex gap-x-6">
+                    <div class="flex items-center">
+                        <input id="modeAdd" name="bulk-mode" type="radio" class="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500" checked>
+                        <label for="modeAdd" class="ml-2 block text-sm text-gray-900">Add / Overwrite Rotation</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input id="modeClear" name="bulk-mode" type="radio" class="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500">
+                        <label for="modeClear" class="ml-2 block text-sm text-gray-900">Clear Assignments</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="bulkStartDate" class="block text-sm font-medium text-gray-700 mb-1">Start from week of</label>
+                        <input type="date" id="bulkStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="bulkNumWeeks" class="block text-sm font-medium text-gray-700 mb-1">For how many weeks</label>
+                        <input type="number" id="bulkNumWeeks" value="26" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                </div>
+                
+                <div id="addRotationControls" class="space-y-4">
+                     <div class="p-3 bg-gray-50 rounded-md border">
+                         <h4 class="font-semibold text-sm mb-2">Available Members</h4>
+                         <p class="text-xs text-gray-500 mb-2">Click to add to Primary. SHIFT+Click to add to Backup.</p>
+                         <div id="bulkAvailableMembers" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="addRotationLists">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                     <div>
+                        <h4 class="font-semibold text-sm mb-2">Primary Rotation Order</h4>
+                        <div id="bulkPrimaryOrder" class="p-3 border rounded-md min-h-[100px] bg-white flex flex-wrap gap-2 items-start"></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                             <h4 class="font-semibold text-sm">Backup Rotation Order</h4>
+                             <button id="copyAndShiftBtn" class="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300">Copy & Shift Primary</button>
+                        </div>
+                        <div id="bulkBackupOrder" class="p-3 border rounded-md min-h-[100px] bg-white flex flex-wrap gap-2 items-start"></div>
+                    </div>
+                </div>
+                <div class="flex items-center pt-4">
+                    <input id="overwriteCheckbox" type="checkbox" class="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500">
+                    <label for="overwriteCheckbox" class="ml-2 block text-sm text-gray-900">Overwrite existing assignments if adding</label>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6">
+                <button id="cancelBulkEditBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button id="saveBulkEditBtn" class="px-6 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
     /* ------------------------------------------------------------------
         Global state
     ------------------------------------------------------------------ */
     let teamMembers = [];
     let timeOffEntries = [];
-    let currentDate    = new Date();
+    let currentDate = new Date();
+    let onCallRotation = {};
+    let currentOnCallDate = new Date();
+    let bulkPrimaryOrder = [];
+    let bulkBackupOrder = [];
 
     /* ------------------------------------------------------------------
         DOM handles
     ------------------------------------------------------------------ */
-    const memberList            = document.getElementById('memberList');
-    const addMemberBtn          = document.getElementById('addMemberBtn');
-    const addMemberModal        = document.getElementById('addMemberModal');
-    const closeModalBtn         = document.getElementById('closeModalBtn');
-    const cancelAddMemberBtn    = document.getElementById('cancelAddMemberBtn');
-    const saveMemberBtn         = document.getElementById('saveMemberBtn');
-    const memberNameInput       = document.getElementById('memberName');
+    // --- Existing handles ---
+    const memberList = document.getElementById('memberList');
+    const addMemberBtn = document.getElementById('addMemberBtn');
+    const addMemberModal = document.getElementById('addMemberModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelAddMemberBtn = document.getElementById('cancelAddMemberBtn');
+    const saveMemberBtn = document.getElementById('saveMemberBtn');
+    const memberNameInput = document.getElementById('memberName');
+    const calendar = document.getElementById('calendar');
+    const currentMonthYear = document.getElementById('currentMonthYear');
+    const prevMonthBtn = document.getElementById('prevMonthBtn');
+    const nextMonthBtn = document.getElementById('nextMonthBtn');
+    const todayBtn = document.getElementById('todayBtn');
+    const addTimeOffBtn = document.getElementById('addTimeOffBtn');
+    const timeOffModal = document.getElementById('timeOffModal');
+    const closeTimeOffModalBtn = document.getElementById('closeTimeOffModalBtn');
+    const cancelTimeOffBtn = document.getElementById('cancelTimeOffBtn');
+    const saveTimeOffBtn = document.getElementById('saveTimeOffBtn');
+    const timeOffMemberSelect = document.getElementById('timeOffMember');
+    const timeOffTypeSelect = document.getElementById('timeOffType');
+    const timeOffStartInput = document.getElementById('timeOffStart');
+    const timeOffEndInput = document.getElementById('timeOffEnd');
+    const timeOffNotesInput = document.getElementById('timeOffNotes');
+    const timeOffTableBody = document.getElementById('timeOffTableBody');
+    const timeOffSummaryBody = document.getElementById('timeOffSummaryBody');
+    const monthFilterSelect = document.getElementById('monthFilter');
+    const memberFilterSelect = document.getElementById('memberFilter');
+    const editOnCallBtn = document.getElementById('editOnCallBtn');
+    const editOnCallModal = document.getElementById('editOnCallModal');
+    const closeEditOnCallModalBtn = document.getElementById('closeEditOnCallModalBtn');
+    const cancelEditOnCallBtn = document.getElementById('cancelEditOnCallBtn');
+    const currentOnCallWeekDisplay = document.getElementById('currentOnCallWeekDisplay');
+    const prevOnCallWeekBtn = document.getElementById('prevOnCallWeekBtn');
+    const nextOnCallWeekBtn = document.getElementById('nextOnCallWeekBtn');
+    const onCallMemberSelect = document.getElementById('onCallMemberSelect');
+    const addOnCallMemberBtn = document.getElementById('addOnCallMemberBtn');
+    const backupOnCallMemberSelect = document.getElementById('backupOnCallMemberSelect');
+    const addBackupOnCallMemberBtn = document.getElementById('addBackupOnCallMemberBtn');
+    const onCallMembersList = document.getElementById('onCallMembersList');
 
-    const calendar              = document.getElementById('calendar');
-    const currentMonthYear      = document.getElementById('currentMonthYear');
-    const prevMonthBtn          = document.getElementById('prevMonthBtn');
-    const nextMonthBtn          = document.getElementById('nextMonthBtn');
-    const todayBtn              = document.getElementById('todayBtn');
-    const addTimeOffBtn         = document.getElementById('addTimeOffBtn');
-
-    const timeOffModal          = document.getElementById('timeOffModal');
-    const closeTimeOffModalBtn  = document.getElementById('closeTimeOffModalBtn');
-    const cancelTimeOffBtn      = document.getElementById('cancelTimeOffBtn');
-    const saveTimeOffBtn        = document.getElementById('saveTimeOffBtn');
-    const timeOffMemberSelect   = document.getElementById('timeOffMember');
-    const timeOffTypeSelect     = document.getElementById('timeOffType');
-    const timeOffStartInput     = document.getElementById('timeOffStart');
-    const timeOffEndInput       = document.getElementById('timeOffEnd');
-    const timeOffNotesInput     = document.getElementById('timeOffNotes');
-
-    const timeOffTableBody      = document.getElementById('timeOffTableBody');
-    const timeOffSummaryBody    = document.getElementById('timeOffSummaryBody');
-    const monthFilterSelect     = document.getElementById('monthFilter');
-    const memberFilterSelect    = document.getElementById('memberFilter');
+    // --- MODIFIED: Handles for Bulk Edit Modal ---
+    const bulkEditBtn = document.getElementById('bulkEditBtn');
+    const bulkEditModal = document.getElementById('bulkEditModal');
+    const closeBulkEditModalBtn = document.getElementById('closeBulkEditModalBtn');
+    const cancelBulkEditBtn = document.getElementById('cancelBulkEditBtn');
+    const saveBulkEditBtn = document.getElementById('saveBulkEditBtn');
+    const bulkStartDateInput = document.getElementById('bulkStartDate');
+    const bulkNumWeeksInput = document.getElementById('bulkNumWeeks');
+    const overwriteCheckbox = document.getElementById('overwriteCheckbox');
+    const bulkAvailableMembersDiv = document.getElementById('bulkAvailableMembers');
+    const bulkPrimaryOrderDiv = document.getElementById('bulkPrimaryOrder');
+    const bulkBackupOrderDiv = document.getElementById('bulkBackupOrder');
+    const copyAndShiftBtn = document.getElementById('copyAndShiftBtn');
+    const modeAddRadio = document.getElementById('modeAdd');
+    const modeClearRadio = document.getElementById('modeClear');
+    const addRotationControls = document.getElementById('addRotationControls');
+    const addRotationLists = document.getElementById('addRotationLists');
 
     /* ------------------------------------------------------------------
-        Fetch helpers
+        Core Functions (fetchData, render*, etc.)
     ------------------------------------------------------------------ */
-    async function fetchData() {
-        try {
-            const [mRes, tRes] = await Promise.all([
-                fetch('/api/members'),
-                fetch('/api/timeoff')
-            ]);
-            teamMembers   = await mRes.json();
-            timeOffEntries = await tRes.json();
-        } catch (err) {
-            console.error('Failed to fetch initial data', err);
-            alert('Could not load data from the server. Is the server running?');
-        }
-    }
+    async function fetchData(){try{const[mRes,tRes,oRes]=await Promise.all([fetch('/api/members'),fetch('/api/timeoff'),fetch('/api/oncall')]);if(!mRes.ok||!tRes.ok||!oRes.ok)throw new Error('Network response was not ok.');teamMembers=await mRes.json();timeOffEntries=await tRes.json();onCallRotation=await oRes.json()||{};}catch(err){console.error('Failed to fetch initial data',err);alert('Could not load data from the server. Is the server running?');}}
+    function calculateWeekdaysOnly(start,end){let count=0;let current=new Date(start);current.setHours(0,0,0,0);while(current<=end){const day=current.getDay();if(day!==0&&day!==6)count++;current.setDate(current.getDate()+1);}return count;}
+    function renderTeamMembers(){memberList.innerHTML='';teamMembers.forEach(m=>{const el=document.createElement('div');el.className='flex justify-between items-center p-2 bg-gray-50 rounded';el.innerHTML=`<p class="font-medium">${m.name}</p><button class="delete-member text-red-500 hover:text-red-700 p-1" data-id="${m.id}"><i class="fas fa-trash-alt"></i></button>`;memberList.appendChild(el);});document.querySelectorAll('.delete-member').forEach(btn=>btn.addEventListener('click',()=>deleteMember(btn.dataset.id)));}
+    function getWeekNumber(date){const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));const dayNum=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dayNum);const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-yearStart)/86400000)+1)/7);}
+    function getWeekIdentifier(date){const d=new Date(date);const dayNum=d.getDay()||7;d.setDate(d.getDate()+4-dayNum);const year=d.getFullYear();const weekNum=getWeekNumber(date);return`${year}-W${String(weekNum).padStart(2,'0')}`;}
+    function renderCalendar(){const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];currentMonthYear.textContent=`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;while(calendar.children.length>8)calendar.removeChild(calendar.lastChild);const firstDay=new Date(currentDate.getFullYear(),currentDate.getMonth(),1);const lastDay=new Date(currentDate.getFullYear(),currentDate.getMonth()+1,0);let startWeekday=firstDay.getDay();startWeekday=(startWeekday===0)?6:startWeekday-1;let renderDate=new Date(currentDate.getFullYear(),currentDate.getMonth(),1-startWeekday);renderDate.setHours(0,0,0,0);while(renderDate<=lastDay||renderDate.getDay()!==1){const weekNumberCell=document.createElement('div');weekNumberCell.className='calendar-day text-xs text-gray-500 text-center p-1 font-semibold flex flex-col justify-center items-center';const weekId=getWeekIdentifier(renderDate);const weekNum=getWeekNumber(renderDate);weekNumberCell.innerHTML=`<div>W${weekNum}</div>`;const onCallEntry=onCallRotation[weekId];if(onCallEntry&&(onCallEntry.primary.length>0||onCallEntry.backup.length>0)){const onCallDiv=document.createElement('div');onCallDiv.className='flex flex-wrap justify-center mt-1';onCallEntry.primary.forEach(memberId=>{const member=teamMembers.find(m=>m.id===memberId);if(member){const initials=member.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();const tooltip=document.createElement('div');tooltip.className='tooltip';tooltip.innerHTML=`<span class="on-call-initials">${initials}</span><span class="tooltiptext">${member.name} (Primary On Call)</span>`;onCallDiv.appendChild(tooltip);}});onCallEntry.backup.forEach(memberId=>{const member=teamMembers.find(m=>m.id===memberId);if(member){const initials=member.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();const tooltip=document.createElement('div');tooltip.className='tooltip';tooltip.innerHTML=`<span class="backup-on-call-initials">${initials}</span><span class="tooltiptext">${member.name} (Backup On Call)</span>`;onCallDiv.appendChild(tooltip);}});weekNumberCell.appendChild(onCallDiv);}calendar.appendChild(weekNumberCell);for(let i=0;i<7;i++){const dayCell=document.createElement('div');dayCell.className='calendar-day border border-gray-200 p-1';const dayNumber=document.createElement('div');dayNumber.className='text-right font-medium text-sm';dayNumber.textContent=renderDate.getMonth()===currentDate.getMonth()?renderDate.getDate():'';dayCell.appendChild(dayNumber);const dayDate=new Date(renderDate);dayDate.setHours(0,0,0,0);const weekday=dayDate.getDay();if(weekday===0||weekday===6){dayCell.classList.add('bg-gray-100');}if(renderDate.getMonth()===currentDate.getMonth()){const todaysEntries=timeOffEntries.filter(e=>{const s=new Date(e.startDate);s.setHours(0,0,0,0);const eDate=new Date(e.endDate);eDate.setHours(0,0,0,0);return dayDate>=s&&dayDate<=eDate;});if((weekday!==0&&weekday!==6)&&todaysEntries.length){const dotsContainer=document.createElement('div');dotsContainer.className='mt-1 flex flex-wrap gap-1';todaysEntries.forEach(entry=>{const member=teamMembers.find(m=>m.id===entry.memberId);if(!member)return;const tooltip=document.createElement('div');tooltip.className='tooltip';const dot=document.createElement('span');dot.className=`event-dot bg-${entry.type}`;tooltip.appendChild(dot);const ttext=document.createElement('span');ttext.className='tooltiptext';ttext.textContent=`${member.name} (${entry.type})`;tooltip.appendChild(ttext);dotsContainer.appendChild(tooltip);});dayCell.appendChild(dotsContainer);}}const today=new Date();today.setHours(0,0,0,0);if(dayDate.toDateString()===today.toDateString()){dayCell.classList.add('border-2','border-blue-500','bg-blue-100');}calendar.appendChild(dayCell);renderDate.setDate(renderDate.getDate()+1);}}}
+    function renderTimeOffSummary(){timeOffSummaryBody.innerHTML='';const thisYear=new Date().getFullYear();teamMembers.forEach(member=>{let vac=0,sick=0,other=0;timeOffEntries.filter(e=>e.memberId===member.id&&new Date(e.startDate).getFullYear()===thisYear).forEach(e=>{const days=calculateWeekdaysOnly(new Date(e.startDate),new Date(e.endDate));if(e.type==='vacation')vac+=days;else if(e.type==='sick')sick+=days;else other+=days;});const row=timeOffSummaryBody.insertRow();row.innerHTML=`<td class="px-6 py-4 font-medium text-gray-900">${member.name}</td><td class="px-6 py-4 text-gray-500">${vac}</td><td class="px-6 py-4 text-gray-500">${sick}</td><td class="px-6 py-4 text-gray-500">${other}</td><td class="px-6 py-4 font-medium text-gray-900">${vac+sick+other}</td>`;});}
+    function populateMonthFilter(){if(!monthFilterSelect)return;const set=new Set();timeOffEntries.forEach(e=>{const d=new Date(e.startDate);set.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);});const currentValue=monthFilterSelect.value;monthFilterSelect.innerHTML='<option value="all">All Months</option>';[...set].sort().reverse().forEach(key=>{const[y,m]=key.split('-');const label=`${new Date(y,m-1).toLocaleString('default',{month:'long'})} ${y}`;const opt=document.createElement('option');opt.value=key;opt.textContent=label;monthFilterSelect.appendChild(opt);});if([...monthFilterSelect.options].some(o=>o.value===currentValue))monthFilterSelect.value=currentValue;}
+    function populateMemberFilter(){if(!memberFilterSelect)return;const currentValue=memberFilterSelect.value;memberFilterSelect.innerHTML='<option value="all">All Members</option>';teamMembers.forEach(m=>{const opt=document.createElement('option');opt.value=m.id;opt.textContent=m.name;memberFilterSelect.appendChild(opt);});if([...memberFilterSelect.options].some(o=>o.value===currentValue)){memberFilterSelect.value=currentValue;}else{memberFilterSelect.value='all';}}
+    function renderTimeOffOverview(){timeOffTableBody.innerHTML='';const selectedMonth=monthFilterSelect?.value||'all';const selectedMember=memberFilterSelect?.value||'all';let filteredList=timeOffEntries;if(selectedMonth!=='all'){filteredList=filteredList.filter(e=>{const d=new Date(e.startDate);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`===selectedMonth;});}if(selectedMember!=='all'){filteredList=filteredList.filter(e=>e.memberId===parseInt(selectedMember));}[...filteredList].sort((a,b)=>new Date(b.startDate)-new Date(a.startDate)).forEach(entry=>{const member=teamMembers.find(m=>m.id===entry.memberId);if(!member)return;const s=new Date(entry.startDate);const e=new Date(entry.endDate);const days=calculateWeekdaysOnly(s,e);const row=timeOffTableBody.insertRow();row.innerHTML=`<td class="px-6 py-4 font-medium text-gray-900">${member.name}</td><td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${entry.type}-100 text-${entry.type}-800 capitalize">${entry.type}</span></td><td class="px-6 py-4 text-gray-500">${s.toLocaleDateString()} – ${e.toLocaleDateString()}</td><td class="px-6 py-4 text-gray-500">${days} day(s)</td><td class="px-6 py-4 text-gray-500">${entry.notes||'-'}</td><td class="px-6 py-4"><button class="text-red-600 hover:text-red-900 delete-time-off" data-id="${entry.id}">Delete</button></td>`;});document.querySelectorAll('.delete-time-off').forEach(btn=>btn.addEventListener('click',()=>deleteTimeOffEntry(btn.dataset.id)));}
+    function populateMemberDropdown(){timeOffMemberSelect.innerHTML='';teamMembers.forEach(m=>{const opt=document.createElement('option');opt.value=m.id;opt.textContent=m.name;timeOffMemberSelect.appendChild(opt);});}
+    function populateOnCallMemberDropdowns(){onCallMemberSelect.innerHTML='';backupOnCallMemberSelect.innerHTML='';if(teamMembers.length===0){onCallMemberSelect.innerHTML='<option value="">No members</option>';backupOnCallMemberSelect.innerHTML='<option value="">No members</option>';addOnCallMemberBtn.disabled=true;addBackupOnCallMemberBtn.disabled=true;return;}addOnCallMemberBtn.disabled=false;addBackupOnCallMemberBtn.disabled=false;teamMembers.forEach(m=>{const optPrimary=document.createElement('option');optPrimary.value=m.id;optPrimary.textContent=m.name;onCallMemberSelect.appendChild(optPrimary);const optBackup=document.createElement('option');optBackup.value=m.id;optBackup.textContent=m.name;backupOnCallMemberSelect.appendChild(optBackup);});}
+    function renderOnCallAssignmentsForCurrentWeek(){onCallMembersList.innerHTML='';const weekId=getWeekIdentifier(currentOnCallDate);const onCallEntry=onCallRotation[weekId]||{primary:[],backup:[]};const allAssigned=[...onCallEntry.primary,...onCallEntry.backup];if(allAssigned.length===0){onCallMembersList.innerHTML='<p class="text-gray-500 text-sm">No one assigned yet.</p>';return;}const sortedPrimary=onCallEntry.primary.map(id=>teamMembers.find(m=>m.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));const sortedBackup=onCallEntry.backup.map(id=>teamMembers.find(m=>m.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));if(sortedPrimary.length>0){const primaryHeader=document.createElement('p');primaryHeader.className='font-semibold text-gray-700 mb-1 mt-2';primaryHeader.textContent='Primary:';onCallMembersList.appendChild(primaryHeader);sortedPrimary.forEach(member=>{const el=document.createElement('div');el.className='flex justify-between items-center p-2 bg-yellow-50 rounded';el.innerHTML=`<p class="font-medium">${member.name}</p><button class="remove-on-call text-red-500 hover:text-red-700 p-1" data-member-id="${member.id}" data-week-id="${weekId}" data-role="primary"><i class="fas fa-trash-alt"></i></button>`;onCallMembersList.appendChild(el);});}if(sortedBackup.length>0){const backupHeader=document.createElement('p');backupHeader.className='font-semibold text-gray-700 mb-1 mt-2';backupHeader.textContent='Backup:';onCallMembersList.appendChild(backupHeader);sortedBackup.forEach(member=>{const el=document.createElement('div');el.className='flex justify-between items-center p-2 bg-gray-200 rounded';el.innerHTML=`<p class="font-medium">${member.name}</p><button class="remove-on-call text-red-500 hover:text-red-700 p-1" data-member-id="${member.id}" data-week-id="${weekId}" data-role="backup"><i class="fas fa-trash-alt"></i></button>`;onCallMembersList.appendChild(el);});}document.querySelectorAll('.remove-on-call').forEach(btn=>{btn.addEventListener('click',(event)=>{const memberId=parseInt(event.currentTarget.dataset.memberId);const weekId=event.currentTarget.dataset.weekId;const role=event.currentTarget.dataset.role;removeMemberFromOnCall(memberId,weekId,role);});});}
+    function showEditOnCallModal(){currentOnCallDate=new Date(currentDate);populateOnCallMemberDropdowns();updateOnCallModalDisplay();editOnCallModal.classList.remove('hidden');}
+    function updateOnCallModalDisplay(){const weekId=getWeekIdentifier(currentOnCallDate);const weekNum=getWeekNumber(currentOnCallDate);const year=currentOnCallDate.getFullYear();currentOnCallWeekDisplay.textContent=`Week ${weekNum}, ${year}`;renderOnCallAssignmentsForCurrentWeek();}
 
     /* ------------------------------------------------------------------
-        Rendering helpers
+        MODIFIED: Bulk Edit Modal Logic
     ------------------------------------------------------------------ */
-    function calculateWeekdaysOnly(start, end) {
-        let count = 0;
-        let current = new Date(start);
-        current.setHours(0, 0, 0, 0);
-        while (current <= end) {
-            const day = current.getDay();
-            if (day !== 0 && day !== 6) count++; // skip Sundays and Saturdays
-            current.setDate(current.getDate() + 1);
-        }
-        return count;
+    function openBulkEditModal() {
+        bulkPrimaryOrder = [];
+        bulkBackupOrder = [];
+        modeAddRadio.checked = true;
+        toggleBulkEditMode();
+        bulkStartDateInput.value = new Date().toISOString().split('T')[0];
+        renderBulkEditAvailableMembers();
+        renderBulkEditOrderLists();
+        bulkEditModal.classList.remove('hidden');
     }
 
-    function renderTeamMembers() {
-        memberList.innerHTML = '';
-        teamMembers.forEach(m => {
-            const el = document.createElement('div');
-            el.className = 'flex justify-between items-center p-2 bg-gray-50 rounded';
-            el.innerHTML = `
-                <p class="font-medium">${m.name}</p>
-                <button class="delete-member text-red-500 hover:text-red-700 p-1" data-id="${m.id}"><i class="fas fa-trash-alt"></i></button>`;
-            memberList.appendChild(el);
-        });
-        // re‑bind delete buttons
-        document.querySelectorAll('.delete-member').forEach(btn => btn.addEventListener('click', () => deleteMember(btn.dataset.id)));
-    }
-
-    function renderCalendar() {
-        /* update month title */
-        const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        currentMonthYear.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-
-        /* clear old day cells but keep weekday headers (first 7 children) */
-        while (calendar.children.length > 7) calendar.removeChild(calendar.lastChild);
-
-        const firstDay   = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const lastDay    = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0);
-        const daysInMonth= lastDay.getDate();
-        
-        // Adjust startWeekday: 0 for Monday, 1 for Tuesday, ..., 6 for Sunday
-        let startWeekday = firstDay.getDay();
-        startWeekday = (startWeekday === 0) ? 6 : startWeekday - 1; // Convert Sunday (0) to 6, and shift others by -1
-
-        /* leading blanks */
-        for (let i=0;i<startWeekday;i++) calendar.appendChild(document.createElement('div')).className='calendar-day'; // Removed bg-gray-100 here
-
-        /* one cell per day */
-        for (let d=1; d<=daysInMonth; d++) {
-            const dayCell = document.createElement('div');
-            dayCell.className = 'calendar-day border border-gray-200 p-1';
-
-            const dayNumber = document.createElement('div');
-            dayNumber.className = 'text-right font-medium text-sm';
-            dayNumber.textContent = d;
-            dayCell.appendChild(dayNumber);
-
-            const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), d);
-            dayDate.setHours(0,0,0,0);
-
-            /* Highlight weekends */
-            const weekday = dayDate.getDay(); // 0 for Sunday, 6 for Saturday
-            if (weekday === 0 || weekday === 6) {
-                dayCell.classList.add('bg-gray-100');
-            }
-
-
-            /* find entries for this day */
-            const todaysEntries = timeOffEntries.filter(e => {
-                const s = new Date(e.startDate); s.setHours(0, 0, 0, 0);
-                const eDate = new Date(e.endDate); eDate.setHours(0, 0, 0, 0);
-                return dayDate >= s && dayDate <= eDate;
-            });
-
-            // Only show dots if it's a weekday AND there are entries
-            if ((weekday !== 0 && weekday !== 6) && todaysEntries.length) { // <-- Added condition here
-                const dotsContainer = document.createElement('div');
-                dotsContainer.className = 'mt-1 flex flex-wrap gap-1';
-
-                todaysEntries.forEach(entry => {
-                    const member = teamMembers.find(m=>m.id===entry.memberId);
-                    if (!member) return;
-                    const tooltip = document.createElement('div');
-                    tooltip.className='tooltip';
-
-                    const dot = document.createElement('span');
-                    dot.className=`event-dot bg-${entry.type}`;
-                    tooltip.appendChild(dot);
-
-                    const ttext = document.createElement('span');
-                    ttext.className='tooltiptext';
-                    ttext.textContent=`${member.name} (${entry.type})`;
-                    tooltip.appendChild(ttext);
-
-                    dotsContainer.appendChild(tooltip);
-                });
-                dayCell.appendChild(dotsContainer);
-            }
-
-            /* highlight today */
-            const today = new Date(); today.setHours(0,0,0,0);
-            if (dayDate.toDateString() === today.toDateString()) dayCell.classList.add('border-2','border-blue-500');
-
-            calendar.appendChild(dayCell);
-        }
-    }
-
-    function renderTimeOffSummary() {
-        timeOffSummaryBody.innerHTML='';
-        const thisYear = new Date().getFullYear();
-
-        teamMembers.forEach(member => {
-            let vac=0, sick=0, other=0;
-            timeOffEntries.filter(e => e.memberId===member.id && new Date(e.startDate).getFullYear()===thisYear)
-                           .forEach(e => {
-                               const days = calculateWeekdaysOnly(new Date(e.startDate), new Date(e.endDate));
-                               if (e.type==='vacation') vac += days;
-                               else if (e.type==='sick') sick += days;
-                               else other += days;
-                           });
-            const row = timeOffSummaryBody.insertRow();
-            row.innerHTML = `
-                <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
-                <td class="px-6 py-4 text-gray-500">${vac}</td>
-                <td class="px-6 py-4 text-gray-500">${sick}</td>
-                <td class="px-6 py-4 text-gray-500">${other}</td>
-                <td class="px-6 py-4 font-medium text-gray-900">${vac+sick+other}</td>`;
-        });
-    }
-
-    /* month‑filter dropdown */
-    function populateMonthFilter() {
-        if (!monthFilterSelect) return;
-        const set = new Set();
-        timeOffEntries.forEach(e => {
-            const d = new Date(e.startDate);
-            set.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
-        });
-        const currentValue = monthFilterSelect.value;
-        monthFilterSelect.innerHTML = '<option value="all">All Months</option>';
-        [...set].sort().forEach(key => {
-            const [y,m] = key.split('-');
-            const label = `${new Date(y, m-1).toLocaleString('default',{month:'long'})} ${y}`;
-            const opt = document.createElement('option');
-            opt.value = key; opt.textContent = label;
-            monthFilterSelect.appendChild(opt);
-        });
-        if ([...monthFilterSelect.options].some(o=>o.value===currentValue)) monthFilterSelect.value=currentValue;
-    }
-
-    /* New: Populate member filter dropdown */
-    function populateMemberFilter() {
-        if (!memberFilterSelect) return;
-        const currentValue = memberFilterSelect.value;
-        memberFilterSelect.innerHTML = '<option value="all">All Members</option>';
-        teamMembers.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = m.name;
-            memberFilterSelect.appendChild(opt);
-        });
-        if ([...memberFilterSelect.options].some(o => o.value === currentValue)) {
-            memberFilterSelect.value = currentValue;
+    function toggleBulkEditMode() {
+        if (modeClearRadio.checked) {
+            addRotationControls.style.display = 'none';
+            addRotationLists.style.display = 'none';
         } else {
-            memberFilterSelect.value = 'all'; // Reset if selected member is no longer available
+            addRotationControls.style.display = 'block';
+            addRotationLists.style.display = 'block';
         }
     }
 
-    function renderTimeOffOverview() {
-        timeOffTableBody.innerHTML='';
-        const selectedMonth = monthFilterSelect?.value || 'all';
-        const selectedMember = memberFilterSelect?.value || 'all';
-
-        let filteredList = timeOffEntries;
-
-        if (selectedMonth !== 'all') {
-            filteredList = filteredList.filter(e => {
-                const d = new Date(e.startDate);
-                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === selectedMonth;
+    function renderBulkEditAvailableMembers() {
+        bulkAvailableMembersDiv.innerHTML = '';
+        teamMembers.forEach(member => {
+            const memberEl = document.createElement('button');
+            memberEl.className = 'bulk-member-badge bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-semibold py-1 px-3 rounded-full';
+            memberEl.textContent = member.name;
+            memberEl.addEventListener('click', (e) => {
+                if (e.shiftKey) {
+                    addToBulkOrder('backup', member.id, member.name);
+                } else {
+                    addToBulkOrder('primary', member.id, member.name);
+                }
             });
-        }
-
-        if (selectedMember !== 'all') {
-            filteredList = filteredList.filter(e => e.memberId === parseInt(selectedMember));
-        }
-
-        filteredList.forEach(entry => {
-            const member = teamMembers.find(m=>m.id===entry.memberId);
-            if (!member) return;
-            const s = new Date(entry.startDate);
-            const e = new Date(entry.endDate);
-            const days = calculateWeekdaysOnly(s, e);
-            const row = timeOffTableBody.insertRow();
-            row.innerHTML = `
-                <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
-                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${entry.type}-100 text-${entry.type}-800">${entry.type}</span></td>
-                <td class="px-6 py-4 text-gray-500">${s.toLocaleDateString()} – ${e.toLocaleDateString()}</td>
-                <td class="px-6 py-4 text-gray-500">${days} day(s)</td>
-                <td class="px-6 py-4 text-gray-500">${entry.notes || '-'}</td>
-                <td class="px-6 py-4">
-                    <button class="text-red-600 hover:text-red-900 delete-time-off" data-id="${entry.id}">Delete</button>
-                </td>`;
+            bulkAvailableMembersDiv.appendChild(memberEl);
         });
-        document.querySelectorAll('.delete-time-off').forEach(btn => btn.addEventListener('click', () => deleteTimeOffEntry(btn.dataset.id)));
     }
 
-    function populateMemberDropdown() {
-        timeOffMemberSelect.innerHTML = '';
-        teamMembers.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id; opt.textContent = m.name;
-            timeOffMemberSelect.appendChild(opt);
+    function renderBulkEditOrderLists() {
+        bulkPrimaryOrderDiv.innerHTML = '';
+        bulkPrimaryOrder.forEach((member, index) => {
+            const item = document.createElement('div');
+            item.className = 'bulk-order-item';
+            item.innerHTML = `<span>${member.name}</span><i class="fas fa-times remove-icon" data-index="${index}" data-type="primary"></i>`;
+            bulkPrimaryOrderDiv.appendChild(item);
         });
+
+        bulkBackupOrderDiv.innerHTML = '';
+        bulkBackupOrder.forEach((member, index) => {
+            const item = document.createElement('div');
+            item.className = 'bulk-order-item';
+            item.innerHTML = `<span>${member.name}</span><i class="fas fa-times remove-icon" data-index="${index}" data-type="backup"></i>`;
+            bulkBackupOrderDiv.appendChild(item);
+        });
+
+        document.querySelectorAll('.remove-icon').forEach(icon => {
+            icon.removeEventListener('click', handleRemoveFromBulkOrder); // Prevent duplicate listeners
+            icon.addEventListener('click', handleRemoveFromBulkOrder);
+        });
+    }
+
+    function handleRemoveFromBulkOrder(e) {
+        const type = e.target.dataset.type;
+        const index = parseInt(e.target.dataset.index);
+        removeFromBulkOrder(type, index);
+    }
+
+    function addToBulkOrder(type, id, name) {
+        const list = (type === 'primary') ? bulkPrimaryOrder : bulkBackupOrder;
+        list.push({ id, name });
+        renderBulkEditOrderLists();
+    }
+
+    function removeFromBulkOrder(type, index) {
+        const list = (type === 'primary') ? bulkPrimaryOrder : bulkBackupOrder;
+        list.splice(index, 1);
+        renderBulkEditOrderLists();
+    }
+
+    function handleCopyAndShift() {
+        if (bulkPrimaryOrder.length === 0) {
+            alert('Primary rotation list is empty. Add members first.');
+            return;
+        }
+        const shifted = [...bulkPrimaryOrder];
+        shifted.push(shifted.shift());
+        bulkBackupOrder = shifted;
+        renderBulkEditOrderLists();
+    }
+    
+    function getMonday(d) {
+        d = new Date(d);
+        const day = d.getDay() || 7;
+        if (day !== 1) { d.setHours(-24 * (day - 1)); }
+        return d;
+    }
+
+    async function handleBulkEdit() {
+        const startDateStr = bulkStartDateInput.value;
+        const numWeeks = parseInt(bulkNumWeeksInput.value);
+        if (!startDateStr) return alert('Please select a start date.');
+        if (isNaN(numWeeks) || numWeeks <= 0) return alert('Please enter a valid number of weeks.');
+
+        const isClearMode = modeClearRadio.checked;
+        let propagationDate = getMonday(new Date(startDateStr));
+        let changesMade = 0;
+
+        if (isClearMode) {
+            if (!confirm(`Are you sure you want to CLEAR all on-call assignments for ${numWeeks} weeks starting from the week of ${propagationDate.toLocaleDateString()}? This cannot be undone.`)) {
+                return;
+            }
+            for (let i = 0; i < numWeeks; i++) {
+                const weekId = getWeekIdentifier(propagationDate);
+                if (onCallRotation[weekId]) {
+                    delete onCallRotation[weekId];
+                    changesMade++;
+                }
+                propagationDate.setDate(propagationDate.getDate() + 7);
+            }
+        } else { // Add/Overwrite Mode
+            const shouldOverwrite = overwriteCheckbox.checked;
+            if (bulkPrimaryOrder.length === 0) return alert('The Primary rotation order cannot be empty.');
+            if (bulkBackupOrder.length === 0) return alert('The Backup rotation order cannot be empty.');
+
+            for (let i = 0; i < numWeeks; i++) {
+                const weekId = getWeekIdentifier(propagationDate);
+                if (!shouldOverwrite && onCallRotation[weekId] && (onCallRotation[weekId].primary.length > 0 || onCallRotation[weekId].backup.length > 0)) {
+                    propagationDate.setDate(propagationDate.getDate() + 7);
+                    continue; 
+                }
+                const primaryPerson = bulkPrimaryOrder[i % bulkPrimaryOrder.length];
+                const backupPerson = bulkBackupOrder[i % bulkBackupOrder.length];
+                onCallRotation[weekId] = { primary: [primaryPerson.id], backup: [backupPerson.id] };
+                changesMade++;
+                propagationDate.setDate(propagationDate.getDate() + 7);
+            }
+        }
+
+        await saveOnCallRotation();
+        bulkEditModal.classList.add('hidden');
+        renderAll();
+        alert(`Process complete. ${changesMade} week(s) were updated.`);
     }
 
     /* ------------------------------------------------------------------
-        API calls (create/delete)
+        API calls (create/delete/update)
     ------------------------------------------------------------------ */
-    async function saveNewMember() {
-        const name = memberNameInput.value.trim();
-        if (!name) return alert('Please enter a name');
-        const res = await fetch('/api/members', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
-        if (!res.ok) return alert('Failed to save member');
-        teamMembers.push(await res.json());
-        renderAll();
-        memberNameInput.value='';
-        addMemberModal.classList.add('hidden');
-    }
-
-    async function deleteMember(id) {
-        if (!confirm('Delete member and all their time‑off entries?')) return;
-        const res = await fetch(`/api/members/${id}`, {method:'DELETE'});
-        if (!res.ok) return alert('Failed to delete member');
-        await fetchData();
-        renderAll();
-    }
-
-    async function saveTimeOff() {
-        const memberId = parseInt(timeOffMemberSelect.value);
-        const type     = timeOffTypeSelect.value;
-        const start    = timeOffStartInput.value;
-        const end      = timeOffEndInput.value;
-        if (!memberId || !start || !end) return alert('Please fill in all required fields');
-        if (new Date(end) < new Date(start)) return alert('End date cannot be before start date');
-        const newEntry = {memberId, type, startDate:start, endDate:end, notes:timeOffNotesInput.value.trim()};
-        const res = await fetch('/api/timeoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newEntry)});
-        if (!res.ok) return alert('Failed to save');
-        timeOffEntries.push(await res.json());
-        renderAll();
-        timeOffModal.classList.add('hidden');
-    }
-
-    async function deleteTimeOffEntry(id) {
-        if (!confirm('Delete this time‑off entry?')) return;
-        const res = await fetch(`/api/timeoff/${id}`, {method:'DELETE'});
-        if (!res.ok) return alert('Failed to delete');
-        timeOffEntries = timeOffEntries.filter(e=>e.id!==parseInt(id));
-        renderAll();
-    }
+    async function saveOnCallRotation(){try{await fetch('/api/oncall',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(onCallRotation)})}catch(err){console.error(err);alert('Error: Could not save the on-call schedule.');}}
+    function addMemberToOnCall(role){const selectElement=role==='primary'?onCallMemberSelect:backupOnCallMemberSelect;const memberId=parseInt(selectElement.value);if(isNaN(memberId))return alert('Please select a team member.');const weekId=getWeekIdentifier(currentOnCallDate);if(!onCallRotation[weekId]){onCallRotation[weekId]={primary:[],backup:[]};}if(onCallRotation[weekId].primary.includes(memberId)||onCallRotation[weekId].backup.includes(memberId)){alert('This member is already assigned to an on-call role for this week.');return;}onCallRotation[weekId][role].push(memberId);renderOnCallAssignmentsForCurrentWeek();renderCalendar();saveOnCallRotation();}
+    function removeMemberFromOnCall(memberIdToRemove,weekId,role){if(!confirm(`Are you sure you want to remove this member from ${role} on-call for this week?`))return;if(onCallRotation[weekId]&&onCallRotation[weekId][role]){onCallRotation[weekId][role]=onCallRotation[weekId][role].filter(id=>id!==memberIdToRemove);if(onCallRotation[weekId].primary.length===0&&onCallRotation[weekId].backup.length===0){delete onCallRotation[weekId];}renderOnCallAssignmentsForCurrentWeek();renderCalendar();saveOnCallRotation();}}
+    async function saveNewMember(){const name=memberNameInput.value.trim();if(!name)return alert('Please enter a name');const res=await fetch('/api/members',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});if(!res.ok)return alert('Failed to save member');teamMembers.push(await res.json());renderAll();memberNameInput.value='';addMemberModal.classList.add('hidden');}
+    async function deleteMember(id){if(!confirm('Delete member and all their time‑off entries?'))return;const res=await fetch(`/api/members/${id}`,{method:'DELETE'});if(!res.ok)return alert('Failed to delete member');for(const weekId in onCallRotation){onCallRotation[weekId].primary=onCallRotation[weekId].primary.filter(memberId=>memberId!==parseInt(id));onCallRotation[weekId].backup=onCallRotation[weekId].backup.filter(memberId=>memberId!==parseInt(id));if(onCallRotation[weekId].primary.length===0&&onCallRotation[weekId].backup.length===0){delete onCallRotation[weekId];}}await saveOnCallRotation();await fetchData();renderAll();}
+    async function saveTimeOff(){const memberId=parseInt(timeOffMemberSelect.value);const type=timeOffTypeSelect.value;const start=timeOffStartInput.value;const end=timeOffEndInput.value;if(!memberId||!start||!end)return alert('Please fill in all required fields');if(new Date(end)<new Date(start))return alert('End date cannot be before start date');const newEntry={memberId,type,startDate:start,endDate:end,notes:timeOffNotesInput.value.trim()};const res=await fetch('/api/timeoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newEntry)});if(!res.ok)return alert('Failed to save');timeOffEntries.push(await res.json());renderAll();timeOffModal.classList.add('hidden');}
+    async function deleteTimeOffEntry(id){if(!confirm('Delete this time‑off entry?'))return;const res=await fetch(`/api/timeoff/${id}`,{method:'DELETE'});if(!res.ok)return alert('Failed to delete');timeOffEntries=timeOffEntries.filter(e=>e.id!==parseInt(id));renderAll();}
 
     /* ------------------------------------------------------------------
         Init + listeners
     ------------------------------------------------------------------ */
     function setupEventListeners() {
-        addMemberBtn.addEventListener('click', () => addMemberModal.classList.remove('hidden'));
-        closeModalBtn.addEventListener('click', () => addMemberModal.classList.add('hidden'));
-        cancelAddMemberBtn.addEventListener('click', () => addMemberModal.classList.add('hidden'));
+        addMemberBtn.addEventListener('click', ()=>addMemberModal.classList.remove('hidden'));
+        closeModalBtn.addEventListener('click', ()=>addMemberModal.classList.add('hidden'));
+        cancelAddMemberBtn.addEventListener('click', ()=>addMemberModal.classList.add('hidden'));
         saveMemberBtn.addEventListener('click', saveNewMember);
-
-        prevMonthBtn.addEventListener('click', () => {currentDate.setMonth(currentDate.getMonth()-1); renderCalendar();});
-        nextMonthBtn.addEventListener('click', () => {currentDate.setMonth(currentDate.getMonth()+1); renderCalendar();});
-        todayBtn.addEventListener('click', () => {currentDate = new Date(); renderCalendar();});
-
-        addTimeOffBtn.addEventListener('click', () => timeOffModal.classList.remove('hidden'));
-        closeTimeOffModalBtn.addEventListener('click', () => timeOffModal.classList.add('hidden'));
-        cancelTimeOffBtn.addEventListener('click', () => timeOffModal.classList.add('hidden'));
+        prevMonthBtn.addEventListener('click', ()=>{currentDate.setMonth(currentDate.getMonth()-1);renderCalendar();});
+        nextMonthBtn.addEventListener('click', ()=>{currentDate.setMonth(currentDate.getMonth()+1);renderCalendar();});
+        todayBtn.addEventListener('click', ()=>{currentDate=new Date();renderCalendar();});
+        addTimeOffBtn.addEventListener('click', ()=>{const today=new Date().toISOString().split('T')[0];timeOffStartInput.value=today;timeOffEndInput.value=today;timeOffModal.classList.remove('hidden');});
+        closeTimeOffModalBtn.addEventListener('click', ()=>timeOffModal.classList.add('hidden'));
+        cancelTimeOffBtn.addEventListener('click', ()=>timeOffModal.classList.add('hidden'));
         saveTimeOffBtn.addEventListener('click', saveTimeOff);
-
         monthFilterSelect.addEventListener('change', renderTimeOffOverview);
         memberFilterSelect.addEventListener('change', renderTimeOffOverview);
+        editOnCallBtn.addEventListener('click', showEditOnCallModal);
+        closeEditOnCallModalBtn.addEventListener('click', ()=>editOnCallModal.classList.add('hidden'));
+        cancelEditOnCallBtn.addEventListener('click', ()=>editOnCallModal.classList.add('hidden'));
+        addOnCallMemberBtn.addEventListener('click', ()=>addMemberToOnCall('primary'));
+        addBackupOnCallMemberBtn.addEventListener('click', ()=>addMemberToOnCall('backup'));
+        prevOnCallWeekBtn.addEventListener('click', ()=>{currentOnCallDate.setDate(currentOnCallDate.getDate()-7);updateOnCallModalDisplay();});
+        nextOnCallWeekBtn.addEventListener('click', ()=>{currentOnCallDate.setDate(currentOnCallDate.getDate()+7);updateOnCallModalDisplay();});
+        
+        // --- MODIFIED: Listeners for Bulk Edit Modal ---
+        bulkEditBtn.addEventListener('click', openBulkEditModal);
+        closeBulkEditModalBtn.addEventListener('click', ()=>bulkEditModal.classList.add('hidden'));
+        cancelBulkEditBtn.addEventListener('click', ()=>bulkEditModal.classList.add('hidden'));
+        saveBulkEditBtn.addEventListener('click', handleBulkEdit);
+        copyAndShiftBtn.addEventListener('click', handleCopyAndShift);
+        modeAddRadio.addEventListener('change', toggleBulkEditMode);
+        modeClearRadio.addEventListener('change', toggleBulkEditMode);
     }
 
     async function init() {
         setupEventListeners();
         await fetchData();
         renderAll();
-        const today = new Date().toISOString().split('T')[0];
-        timeOffStartInput.value = today; timeOffEndInput.value = today;
     }
 
     function renderAll() {
         renderTeamMembers();
         renderCalendar();
-        populateMonthFilter();
-        populateMemberFilter();
-        renderTimeOffOverview();
         renderTimeOffSummary();
+        renderTimeOffOverview();
         populateMemberDropdown();
+        populateMemberFilter();
+        populateMonthFilter();
     }
 
     document.addEventListener('DOMContentLoaded', init);
