@@ -2,6 +2,7 @@
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb'); // Import ObjectId
 require('dotenv').config();
+const fetch = require('node-fetch'); // Required to make HTTP requests to the holiday API
 
 // Configuration
 const app = express();
@@ -18,13 +19,13 @@ if (!mongoUri) {
 app.use(express.json()); // To parse JSON bodies
 app.use(express.static('public')); // Serve static files like CSS or client-side JS from a 'public' folder
 app.get('/', (req, res) => { // Serve the main HTML file
-    res.sendFile(__dirname + '/public/index.html'); // Corrected path for Render.com
+    res.sendFile(__dirname + '/index.html'); // Corrected path for Render.com
 });
 
 let db;
 let teamMembersCollection;
 let timeOffCollection;
-let onCallCollection; // <<< NEW: Add a variable for the on-call collection
+let onCallCollection;
 
 // Connect to MongoDB
 async function connectDB() {
@@ -34,7 +35,7 @@ async function connectDB() {
         db = client.db("timeOffDB"); // Use your database name
         teamMembersCollection = db.collection("teamMembers");
         timeOffCollection = db.collection("timeOffEntries");
-        onCallCollection = db.collection("onCallRotation"); // <<< NEW: Initialize the new collection
+        onCallCollection = db.collection("onCallRotation");
         console.log("Successfully connected to MongoDB.");
     } catch (err) {
         console.error("Failed to connect to MongoDB", err);
@@ -44,7 +45,7 @@ async function connectDB() {
 
 // ---- API Endpoints ----
 
-// --- Team Member and Time-Off endpoints remain the same ---
+// --- Team Member and Time-Off endpoints ---
 // GET all team members
 app.get('/api/members', async (req, res) => {
     try {
@@ -121,19 +122,15 @@ app.delete('/api/timeoff/:id', async (req, res) => {
 });
 
 
-// <<< ------------------- NEW ON-CALL ENDPOINTS ------------------- >>>
+// --- ON-CALL ENDPOINTS ---
 
 // GET the on-call rotation data
 app.get('/api/oncall', async (req, res) => {
     try {
-        // We'll store the entire rotation object as a single document in the collection.
-        // We give it a known identifier, e.g., { "scheduleName": "main" }
         const rotation = await onCallCollection.findOne({ scheduleName: "main" });
         if (rotation) {
-            // If it exists, return the 'rotationData' field, which holds the object.
             res.json(rotation.rotationData || {});
         } else {
-            // If no schedule has ever been saved, return an empty object.
             res.json({});
         }
     } catch (err) {
@@ -145,11 +142,10 @@ app.get('/api/oncall', async (req, res) => {
 app.post('/api/oncall', async (req, res) => {
     try {
         const rotationData = req.body;
-        // Use "upsert" to either update the existing schedule doc or create it if it doesn't exist.
         await onCallCollection.updateOne(
-            { scheduleName: "main" }, // The filter to find the document
-            { $set: { rotationData: rotationData } }, // The data to set
-            { upsert: true } // The magic option
+            { scheduleName: "main" },
+            { $set: { rotationData: rotationData } },
+            { upsert: true }
         );
         res.status(200).json({ message: 'On-call schedule saved successfully' });
     } catch (err) {
@@ -157,7 +153,31 @@ app.post('/api/oncall', async (req, res) => {
     }
 });
 
-// <<< ------------------- END NEW ON-CALL ENDPOINTS ------------------- >>>
+// --- NEW PUBLIC HOLIDAYS ENDPOINT ---
+app.get('/api/holidays/:year', async (req, res) => {
+    const { year } = req.params;
+    const countries = ['SK', 'NO', 'DK']; // Slovakia, Norway, Denmark
+    const holidayPromises = countries.map(countryCode => 
+        fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch holidays for ${countryCode}`);
+                }
+                return response.json();
+            })
+    );
+
+    try {
+        const allHolidaysArrays = await Promise.all(holidayPromises);
+        // The result is an array of arrays, so we flatten it into a single array
+        const flattenedHolidays = allHolidaysArrays.flat();
+        res.json(flattenedHolidays);
+    } catch (error) {
+        console.error('Failed to fetch public holidays:', error);
+        res.status(500).json({ message: 'Failed to fetch public holidays' });
+    }
+});
+
 
 // Start the server
 connectDB().then(() => {
